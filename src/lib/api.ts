@@ -46,10 +46,19 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   // Handle auth errors
   if (res.status === 401 || res.status === 403) {
     clearInviteCode();
-    // Trigger onboarding modal by dispatching event
-    window.dispatchEvent(new CustomEvent("auth-error"));
+    // Trigger onboarding modal by dispatching event (only once)
+    if (!window.__authErrorDispatched) {
+      window.__authErrorDispatched = true;
+      window.dispatchEvent(new CustomEvent("auth-error"));
+      // Reset flag after a short delay to allow retry if needed
+      setTimeout(() => {
+        window.__authErrorDispatched = false;
+      }, 1000);
+    }
     const txt = await res.text().catch(() => "");
-    throw new Error(txt || `HTTP ${res.status}`);
+    // Don't throw error for 401/403 to prevent console spam
+    // The auth-error event will handle showing the onboarding modal
+    throw new Error("인증이 필요합니다");
   }
 
   if (!res.ok) {
