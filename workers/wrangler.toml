@@ -1,0 +1,10 @@
+name = "couplemap-api"
+main = "src/index.ts"
+compatibility_date = "2025-12-24"
+
+# For local dev: `wrangler dev` will serve on http://127.0.0.1:8787
+
+[[d1_databases]]
+binding = "DB"
+database_name = "couplemap_db"
+database_id = "3fd5a15e-2472-4769-b2c7-6627f71a5476"
