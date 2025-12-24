@@ -46,13 +46,14 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   // Handle auth errors
   if (res.status === 401 || res.status === 403) {
     clearInviteCode();
-    // Trigger onboarding modal by dispatching event (only once)
-    if (!window.__authErrorDispatched) {
-      window.__authErrorDispatched = true;
+    // Trigger onboarding modal by dispatching event (only once per second)
+    const authErrorKey = "__authErrorDispatched";
+    if (!(window as any)[authErrorKey]) {
+      (window as any)[authErrorKey] = true;
       window.dispatchEvent(new CustomEvent("auth-error"));
       // Reset flag after a short delay to allow retry if needed
       setTimeout(() => {
-        window.__authErrorDispatched = false;
+        (window as any)[authErrorKey] = false;
       }, 1000);
     }
     const txt = await res.text().catch(() => "");
