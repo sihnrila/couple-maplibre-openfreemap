@@ -12,10 +12,11 @@ import { listFolders } from "../folders/folders.api";
 import { NominatimSearch } from "./NominatimSearch";
 import { OnboardingModal } from "../auth/OnboardingModal";
 import { SettingsSheet } from "../settings/SettingsSheet";
+import { FoldersListSheet } from "../folders/FoldersListSheet";
 import { getInviteCode } from "../../lib/api";
 import { getBaseStyle, getOverlay, BASE_STYLES } from "../theme/theme";
 
-const ICON_EMOJI_MAP: Record<string, string> = {
+export const ICON_EMOJI_MAP: Record<string, string> = {
   heart: "❤️",
   coffee: "☕",
   camp: "⛺",
@@ -135,6 +136,8 @@ export function MapPage() {
 
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [foldersListOpen, setFoldersListOpen] = useState(false);
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [baseStyle, setBaseStyleState] = useState<"kakao" | "light" | "dark">(getBaseStyle);
   const [overlay, setOverlayState] = useState<"none" | "grain" | "vignette" | "nightTint">(getOverlay);
 
@@ -259,8 +262,15 @@ export function MapPage() {
     },
   });
 
-  const places = placesQuery.data ?? [];
+  const allPlaces = placesQuery.data ?? [];
   const folders = foldersQuery.data ?? [];
+
+  // 폴더별 필터링
+  const places = selectedFolderId === null
+    ? allPlaces
+    : selectedFolderId === "none"
+    ? allPlaces.filter((p) => !p.folder_id)
+    : allPlaces.filter((p) => p.folder_id === selectedFolderId);
 
   // 마커 동기화 (폴더 색상 적용)
   useEffect(() => {
@@ -467,6 +477,51 @@ export function MapPage() {
     setOverlayState(getOverlay());
   };
 
+  // 선택한 폴더의 장소들로 지도 이동
+  const handleMoveToFolder = (folderId: string | null) => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const targetPlaces = folderId === null
+      ? allPlaces
+      : folderId === "none"
+      ? allPlaces.filter((p) => !p.folder_id)
+      : allPlaces.filter((p) => p.folder_id === folderId);
+
+    if (targetPlaces.length === 0) {
+      alert("표시할 장소가 없습니다");
+      return;
+    }
+
+    if (targetPlaces.length === 1) {
+      // 장소가 1개면 해당 위치로 이동
+      map.flyTo({
+        center: [targetPlaces[0].lng, targetPlaces[0].lat],
+        zoom: 14,
+        essential: true,
+      });
+    } else {
+      // 여러 장소면 bounds 계산
+      const lngs = targetPlaces.map((p) => p.lng);
+      const lats = targetPlaces.map((p) => p.lat);
+      const minLng = Math.min(...lngs);
+      const maxLng = Math.max(...lngs);
+      const minLat = Math.min(...lats);
+      const maxLat = Math.max(...lats);
+
+      map.fitBounds(
+        [
+          [minLng, minLat],
+          [maxLng, maxLat],
+        ],
+        {
+          padding: { top: 100, bottom: 100, left: 100, right: 100 },
+          duration: 800,
+        }
+      );
+    }
+  };
+
   return (
     <div className="h-dvh w-full relative">
       {/* 상단: 검색 + 설정 */}
@@ -483,6 +538,15 @@ export function MapPage() {
         <div className="flex gap-2">
           <button
             className="px-3 py-2 rounded-2xl bg-white/85 backdrop-blur shadow text-sm text-black"
+            onClick={() => setFoldersListOpen(true)}
+            type="button"
+            title="폴더 목록"
+          >
+            📁
+          </button>
+
+          <button
+            className="px-3 py-2 rounded-2xl bg-white/85 backdrop-blur shadow text-sm text-black"
             onClick={() => setSettingsOpen(true)}
             type="button"
             title="설정"
@@ -496,8 +560,8 @@ export function MapPage() {
             onClick={() => {
               const map = mapRef.current;
               if (!map) return;
-              if (!places[0]) return alert("아직 저장된 핀이 없어! 검색해서 하나 저장해봐 🧷");
-              map.flyTo({ center: [places[0].lng, places[0].lat], zoom: 14, essential: true });
+              if (!allPlaces[0]) return alert("아직 저장된 핀이 없어! 검색해서 하나 저장해봐 🧷");
+              map.flyTo({ center: [allPlaces[0].lng, allPlaces[0].lat], zoom: 14, essential: true });
             }}
             title="최근 저장으로 이동"
           >
@@ -690,6 +754,38 @@ export function MapPage() {
         onClose={() => setSettingsOpen(false)}
         onThemeChange={handleThemeChange}
       />
+
+      {/* 폴더 목록 시트 */}
+      <FoldersListSheet
+        open={foldersListOpen}
+        onClose={() => setFoldersListOpen(false)}
+        folders={folders}
+        places={allPlaces}
+        selectedFolderId={selectedFolderId}
+        onSelectFolder={setSelectedFolderId}
+        onMoveToFolder={handleMoveToFolder}
+      />
+
+      {/* 선택된 폴더 표시 */}
+      {selectedFolderId !== null && (
+        <div className="absolute z-20 left-3 top-28 px-3 py-2 rounded-2xl bg-white/90 backdrop-blur shadow text-sm text-black flex items-center gap-2">
+          <span>
+            {selectedFolderId === "none"
+              ? "📌 폴더 없음"
+              : folders.find((f) => f.id === selectedFolderId)?.name || "폴더"}
+          </span>
+          <button
+            className="text-xs opacity-70 hover:opacity-100"
+            onClick={() => {
+              setSelectedFolderId(null);
+              handleMoveToFolder(null);
+            }}
+            type="button"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* 하단 도움말 */}
       <div className="absolute z-10 left-3 bottom-3 right-3">
