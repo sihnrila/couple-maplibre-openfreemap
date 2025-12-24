@@ -41,3 +41,11 @@
   background: linear-gradient(180deg, rgba(20,40,90,0.65), rgba(10,20,40,0.65));
   mix-blend-mode: multiply;
 }
+
+/* MapLibre 컨트롤 위치 조정 */
+.maplibregl-ctrl-top-right {
+  top: 12px !important;
+  right: 12px !important;
+  left: auto !important;
+  bottom: auto !important;
+}
