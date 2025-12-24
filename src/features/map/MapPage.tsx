@@ -344,7 +344,10 @@ export function MapPage() {
         const existingMarker = existing.get(p.id);
         if (existingMarker) {
           // 위치를 항상 명시적으로 설정 (고정)
-          existingMarker.setLngLat([p.lng, p.lat]);
+          // requestAnimationFrame을 사용하여 안정적으로 위치 설정
+          requestAnimationFrame(() => {
+            existingMarker.setLngLat([p.lng, p.lat]);
+          });
           
           // 필터링 상태에 따라 투명도만 업데이트 (element 교체 없이)
           const el = existingMarker.getElement();
@@ -394,10 +397,19 @@ export function MapPage() {
         }
       });
 
-      const marker = new maplibregl.Marker({ element: el })
+      const marker = new maplibregl.Marker({ 
+        element: el,
+        anchor: "center" // 마커의 중심점을 좌표에 고정
+      })
         .setLngLat([p.lng, p.lat])
         .setPopup(popup)
         .addTo(map);
+
+      // 마커가 지도에 추가된 후 위치를 다시 명시적으로 설정 (안정성 확보)
+      // requestAnimationFrame을 사용하여 DOM 업데이트 후 실행
+      requestAnimationFrame(() => {
+        marker.setLngLat([p.lng, p.lat]);
+      });
 
       // 마커 클릭 시 편집 모드로 전환
       el.addEventListener("click", () => {
