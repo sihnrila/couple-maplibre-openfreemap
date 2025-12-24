@@ -338,41 +338,17 @@ export function MapPage() {
         : selectedFolderId === "none"
         ? !p.folder_id
         : p.folder_id === selectedFolderId;
+      
       if (existing.has(p.id)) {
-        // Update existing marker if folder or style changed
+        // 기존 마커가 있으면 위치만 업데이트하고 스타일은 유지
         const existingMarker = existing.get(p.id);
         if (existingMarker) {
           // 위치를 항상 명시적으로 설정 (고정)
           existingMarker.setLngLat([p.lng, p.lat]);
           
-          // 폴더나 스타일이 변경된 경우에만 element 교체
-          const folderColor = p.folder_id ? (folderColorMap.get(p.folder_id) ?? null) : null;
-          const markerStyle: MarkerStyle = (p.marker_style || "circle") as MarkerStyle;
+          // 필터링 상태에 따라 투명도만 업데이트 (element 교체 없이)
           const el = existingMarker.getElement();
-          const parent = el?.parentElement;
-          if (parent) {
-            // Remove old element and create new one
-            const newEl = createMarkerElement(markerStyle, folderColor);
-            
-            // 필터링되지 않은 마커는 투명도 적용
-            if (!isFiltered) {
-              newEl.style.opacity = "0.3";
-              newEl.style.pointerEvents = "none";
-            } else {
-              newEl.style.opacity = "1";
-              newEl.style.pointerEvents = "auto";
-            }
-            
-            // 마커 클릭 시 편집 모드로 전환
-            newEl.addEventListener("click", () => {
-              openEditSheet(p);
-            });
-            parent.replaceChild(newEl, el);
-            
-            // Element 교체 후 위치를 다시 명시적으로 설정 (고정)
-            existingMarker.setLngLat([p.lng, p.lat]);
-          } else {
-            // Element 교체가 없어도 필터링 상태에 따라 투명도 업데이트
+          if (el) {
             if (!isFiltered) {
               el.style.opacity = "0.3";
               el.style.pointerEvents = "none";
