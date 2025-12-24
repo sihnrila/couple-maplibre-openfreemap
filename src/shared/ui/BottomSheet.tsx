@@ -16,23 +16,19 @@ export function BottomSheet({ open, onClose, title, children }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  if (!open) return null;
+
   return (
     <>
       <div
-        className={[
-          "fixed inset-0 z-30 transition-opacity",
-          open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none",
-        ].join(" ")}
+        className="fixed inset-0 z-30 transition-opacity opacity-100 pointer-events-auto"
         onClick={onClose}
       >
         <div className="absolute inset-0 bg-black/45 backdrop-blur-[2px]" />
       </div>
 
       <div
-        className={[
-          "fixed left-0 right-0 bottom-0 z-40 transition-transform duration-300",
-          open ? "translate-y-0" : "translate-y-full",
-        ].join(" ")}
+        className="fixed left-0 right-0 bottom-0 z-40 transition-transform duration-300 translate-y-0"
       >
         <div className="mx-auto max-w-xl">
           <div className="rounded-t-3xl bg-white/95 backdrop-blur shadow-soft">
