@@ -27,9 +27,20 @@ export function ThemeSheet({ open, onClose, onThemeChange }: Props) {
         {/* Base Style */}
         <div className="space-y-3">
           <div className="text-xs font-semibold text-black/70">지도 스타일</div>
-          <div className="flex gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <button
-              className={`flex-1 px-4 py-3 rounded-2xl text-sm font-semibold ${
+              className={`px-4 py-3 rounded-2xl text-sm font-semibold ${
+                baseStyle === "kakao"
+                  ? "bg-black text-white"
+                  : "bg-black/5 hover:bg-black/10"
+              }`}
+              onClick={() => handleBaseStyleChange("kakao")}
+              type="button"
+            >
+              🗺️ 카카오
+            </button>
+            <button
+              className={`px-4 py-3 rounded-2xl text-sm font-semibold ${
                 baseStyle === "light"
                   ? "bg-black text-white"
                   : "bg-black/5 hover:bg-black/10"
@@ -40,7 +51,7 @@ export function ThemeSheet({ open, onClose, onThemeChange }: Props) {
               ☀️ 라이트
             </button>
             <button
-              className={`flex-1 px-4 py-3 rounded-2xl text-sm font-semibold ${
+              className={`px-4 py-3 rounded-2xl text-sm font-semibold ${
                 baseStyle === "dark"
                   ? "bg-black text-white"
                   : "bg-black/5 hover:bg-black/10"

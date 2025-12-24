@@ -57,7 +57,7 @@ export function MapPage() {
 
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [baseStyle, setBaseStyleState] = useState<"light" | "dark">(getBaseStyle);
+  const [baseStyle, setBaseStyleState] = useState<"kakao" | "light" | "dark">(getBaseStyle);
   const [overlay, setOverlayState] = useState<"none" | "grain" | "vignette" | "nightTint">(getOverlay);
 
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -138,15 +138,17 @@ export function MapPage() {
     const map = mapRef.current;
     if (!map) return;
     
+    const style = BASE_STYLES[baseStyle];
+    
     // 스타일이 로드되지 않았으면 대기
     if (!map.isStyleLoaded()) {
       map.once("load", () => {
-        map.setStyle(BASE_STYLES[baseStyle]);
+        map.setStyle(style);
       });
       return;
     }
     
-    map.setStyle(BASE_STYLES[baseStyle]);
+    map.setStyle(style);
   }, [baseStyle]);
 
   // 오버레이 클래스 업데이트
