@@ -535,9 +535,9 @@ export function MapPage() {
           onPick={openSaveSheet}
         />
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 relative z-30">
           <button
-            className="px-3 py-2 rounded-2xl bg-white/85 backdrop-blur shadow text-sm text-black"
+            className="px-3 py-2 rounded-2xl bg-white/85 backdrop-blur shadow text-sm text-black relative z-30"
             onClick={() => setFoldersListOpen(true)}
             type="button"
             title="폴더 목록"
@@ -546,7 +546,7 @@ export function MapPage() {
           </button>
 
           <button
-            className="px-3 py-2 rounded-2xl bg-white/85 backdrop-blur shadow text-sm text-black"
+            className="px-3 py-2 rounded-2xl bg-white/85 backdrop-blur shadow text-sm text-black relative z-30"
             onClick={() => setSettingsOpen(true)}
             type="button"
             title="설정"
@@ -555,7 +555,7 @@ export function MapPage() {
           </button>
 
           <button
-            className="px-3 py-2 rounded-2xl bg-white/85 backdrop-blur shadow text-sm text-black"
+            className="px-3 py-2 rounded-2xl bg-white/85 backdrop-blur shadow text-sm text-black relative z-30"
             type="button"
             onClick={() => {
               const map = mapRef.current;
@@ -786,16 +786,6 @@ export function MapPage() {
           </button>
         </div>
       )}
-
-      {/* 하단 도움말 */}
-      <div className="absolute z-10 left-3 bottom-3 right-3">
-        <div className="rounded-2xl bg-white/70 backdrop-blur shadow p-3">
-          <div className="text-xs font-semibold mb-1">🧭 흐름</div>
-          <div className="text-[11px] opacity-80">
-            검색 → 선택 → 저장 카드에서 제목/태그/메모 다듬기 → 저장
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

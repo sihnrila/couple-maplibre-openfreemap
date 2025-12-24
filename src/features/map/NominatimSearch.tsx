@@ -52,11 +52,6 @@ export function NominatimSearch({ value, onChange, results, loading, error, onPi
         </div>
       )}
 
-      {!error && results.length === 0 && value.trim().length < 2 && (
-        <div className="mt-1 text-[11px] opacity-70 text-black/70">
-          결과 선택 → 저장 카드가 열려요 ✨
-        </div>
-      )}
     </div>
   );
 }
