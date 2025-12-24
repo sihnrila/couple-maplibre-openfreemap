@@ -334,6 +334,13 @@ export function MapPage() {
         // Update existing marker if folder or style changed
         const existingMarker = existing.get(p.id);
         if (existingMarker) {
+          // 위치가 변경되었는지 확인하고 업데이트
+          const currentLngLat = existingMarker.getLngLat();
+          if (Math.abs(currentLngLat.lng - p.lng) > 0.0001 || Math.abs(currentLngLat.lat - p.lat) > 0.0001) {
+            existingMarker.setLngLat([p.lng, p.lat]);
+          }
+          
+          // 폴더나 스타일이 변경된 경우에만 element 교체
           const folderColor = p.folder_id ? (folderColorMap.get(p.folder_id) ?? null) : null;
           const markerStyle: MarkerStyle = (p.marker_style || "circle") as MarkerStyle;
           const el = existingMarker.getElement();
