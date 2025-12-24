@@ -101,6 +101,51 @@ async function handleGeocode(req: Request) {
   return json(data);
 }
 
+// Reverse geocoding: 좌표로 주소 찾기
+async function handleReverseGeocode(req: Request) {
+  const url = new URL(req.url);
+  const lat = url.searchParams.get("lat");
+  const lng = url.searchParams.get("lng");
+
+  if (!lat || !lng) return bad("Missing lat/lng");
+
+  const latNum = Number(lat);
+  const lngNum = Number(lng);
+
+  if (!Number.isFinite(latNum) || !Number.isFinite(lngNum)) {
+    return bad("Invalid lat/lng");
+  }
+
+  const now = Date.now();
+  // Rate limit: 1.2초 간격
+  if (now - lastGeocodeAt < 1200) {
+    return bad("Rate limited: try again in a second.", 429);
+  }
+  lastGeocodeAt = now;
+
+  const target = new URL("https://nominatim.openstreetmap.org/reverse");
+  target.searchParams.set("format", "jsonv2");
+  target.searchParams.set("addressdetails", "1");
+  target.searchParams.set("lat", String(latNum));
+  target.searchParams.set("lon", String(lngNum));
+  target.searchParams.set("zoom", "18");
+
+  const res = await fetch(target.toString(), {
+    headers: {
+      "user-agent": "CoupleMap/1.0 (contact: sihnrila@github.com)",
+      "accept-language": "ko",
+      "referer": "https://couplemap-api.oo8923.workers.dev",
+    },
+  });
+
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    return bad(t || `Reverse geocode error: ${res.status}`, 502);
+  }
+  const data = await res.json();
+  return json(data);
+}
+
 // Couple APIs
 async function handleCoupleCreate(req: Request, env: Env) {
   const id = uuidv4();
@@ -494,6 +539,7 @@ export default {
 
     // Public endpoints
     if (pathname === "/api/geocode" && req.method === "GET") return handleGeocode(req);
+    if (pathname === "/api/reverse-geocode" && req.method === "GET") return handleReverseGeocode(req);
     if (pathname === "/api/couple/create" && req.method === "POST") return handleCoupleCreate(req, env);
     if (pathname === "/api/couple/join" && req.method === "POST") return handleCoupleJoin(req, env);
 

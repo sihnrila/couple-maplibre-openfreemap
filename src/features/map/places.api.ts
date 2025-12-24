@@ -29,3 +29,13 @@ export async function updatePlace(
 export async function geocode(q: string, limit = 6): Promise<GeocodeItem[]> {
   return api<GeocodeItem[]>(`/api/geocode?q=${encodeURIComponent(q)}&limit=${limit}`);
 }
+
+export async function reverseGeocode(lat: number, lng: number): Promise<GeocodeItem | null> {
+  try {
+    const result = await api<GeocodeItem>(`/api/reverse-geocode?lat=${lat}&lng=${lng}`);
+    return result;
+  } catch (e) {
+    console.error("Reverse geocode error:", e);
+    return null;
+  }
+}

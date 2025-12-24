@@ -7,7 +7,7 @@ import type { Place, GeocodeItem, Folder, MarkerStyle } from "../../shared/types
 import { BottomSheet } from "../../shared/ui/BottomSheet";
 import { TagInput } from "../../shared/ui/TagInput";
 import { useDebouncedValue } from "../../shared/hooks/useDebouncedValue";
-import { createPlace, geocode, listPlaces, updatePlace } from "./places.api";
+import { createPlace, geocode, listPlaces, updatePlace, reverseGeocode } from "./places.api";
 import { listFolders } from "../folders/folders.api";
 import { NominatimSearch } from "./NominatimSearch";
 import { OnboardingModal } from "../auth/OnboardingModal";
@@ -204,9 +204,145 @@ export function MapPage() {
       "top-right"
     );
 
+    // 지도 길게 누르기 (long press) 이벤트 처리
+    let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+    let pressStartPos: { x: number; y: number } | null = null;
+    const LONG_PRESS_DURATION = 500; // 500ms
+    const MAX_MOVE_DISTANCE = 10; // 10px 이내 이동만 long press로 인정
+
+    const handleLongPressStart = (e: maplibregl.MapMouseEvent | maplibregl.MapTouchEvent) => {
+      const point = e.point;
+      pressStartPos = { x: point.x, y: point.y };
+      
+      longPressTimer = setTimeout(() => {
+        // 타이머가 실행되면 long press로 인정
+        const lng = e.lngLat.lng;
+        const lat = e.lngLat.lat;
+        
+        // reverse geocoding으로 주소 가져오기
+        reverseGeocode(lat, lng).then((result) => {
+          if (!result) {
+            // 주소를 가져오지 못한 경우에도 저장 카드 열기
+            setSelected(null);
+            setSheetOpen(true);
+            setDraft({
+              title: "새 장소",
+              memo: "",
+              visited_at: "",
+              tags: [],
+              folder_id: null,
+              marker_style: "circle",
+              lat,
+              lng,
+              source: "manual",
+              source_id: null,
+            });
+            return;
+          }
+
+          // 주소 정보로 저장 카드 열기
+          const geocodeItem: GeocodeItem = {
+            place_id: result.place_id || "",
+            lat: String(lat),
+            lon: String(lng),
+            display_name: result.display_name || "",
+            name: result.name,
+            type: result.type,
+            class: result.class,
+          };
+
+          setSelected(geocodeItem);
+          setSheetOpen(true);
+
+          if (Number.isFinite(lat) && Number.isFinite(lng)) {
+            map.flyTo({ center: [lng, lat], zoom: 14, essential: true });
+          }
+
+          setDraft({
+            title: result.name || result.display_name?.split(",")[0] || "새 장소",
+            memo: result.display_name ? `📍 ${result.display_name}` : "",
+            visited_at: "",
+            tags: [],
+            folder_id: null,
+            marker_style: "circle",
+            lat,
+            lng,
+            source: "reverse_geocode",
+            source_id: String(result.place_id || ""),
+          });
+        }).catch((err) => {
+          console.error("Reverse geocode error:", err);
+          // 에러가 발생해도 저장 카드 열기
+          setSelected(null);
+          setSheetOpen(true);
+          setDraft({
+            title: "새 장소",
+            memo: "",
+            visited_at: "",
+            tags: [],
+            folder_id: null,
+            marker_style: "circle",
+            lat,
+            lng,
+            source: "manual",
+            source_id: null,
+          });
+        });
+      }, LONG_PRESS_DURATION);
+    };
+
+    const handleLongPressMove = (e: maplibregl.MapMouseEvent | maplibregl.MapTouchEvent) => {
+      // 이동 거리가 너무 크면 long press 취소
+      if (pressStartPos) {
+        const point = e.point;
+        const dx = point.x - pressStartPos.x;
+        const dy = point.y - pressStartPos.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance > MAX_MOVE_DISTANCE) {
+          if (longPressTimer) {
+            clearTimeout(longPressTimer);
+            longPressTimer = null;
+          }
+          pressStartPos = null;
+        }
+      }
+    };
+
+    const handleLongPressEnd = () => {
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+      pressStartPos = null;
+    };
+
+    // 마우스 이벤트 (데스크톱)
+    map.on("mousedown", handleLongPressStart);
+    map.on("mousemove", handleLongPressMove);
+    map.on("mouseup", handleLongPressEnd);
+    map.on("mouseleave", handleLongPressEnd);
+
+    // 터치 이벤트 (모바일)
+    map.on("touchstart", handleLongPressStart);
+    map.on("touchmove", handleLongPressMove);
+    map.on("touchend", handleLongPressEnd);
+    map.on("touchcancel", handleLongPressEnd);
+
     mapRef.current = map;
 
     return () => {
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+      }
+      map.off("mousedown", handleLongPressStart);
+      map.off("mousemove", handleLongPressMove);
+      map.off("mouseup", handleLongPressEnd);
+      map.off("mouseleave", handleLongPressEnd);
+      map.off("touchstart", handleLongPressStart);
+      map.off("touchmove", handleLongPressMove);
+      map.off("touchend", handleLongPressEnd);
+      map.off("touchcancel", handleLongPressEnd);
       map.remove();
       mapRef.current = null;
     };
