@@ -698,13 +698,19 @@ export function MapPage() {
           <div className="text-sm opacity-70">선택된 장소가 없어요.</div>
         ) : (
           <div className="space-y-4">
-            <div className="text-[11px] opacity-70">
-              {selected?.display_name ? (
-                <span>{selected.display_name}</span>
-              ) : (
-                <span>주소 정보가 없어요</span>
-              )}
-            </div>
+            {draft.placeId ? (
+              <div className="text-[11px] opacity-70">
+                편집 중: {draft.title}
+              </div>
+            ) : (
+              <div className="text-[11px] opacity-70">
+                {selected?.display_name ? (
+                  <span>{selected.display_name}</span>
+                ) : (
+                  <span>주소 정보가 없어요</span>
+                )}
+              </div>
+            )}
 
             {/* 폴더 선택 */}
             <div className="space-y-2">
