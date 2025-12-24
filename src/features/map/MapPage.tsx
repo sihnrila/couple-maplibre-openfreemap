@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -7,7 +7,7 @@ import type { Place, GeocodeItem, Folder, MarkerStyle } from "../../shared/types
 import { BottomSheet } from "../../shared/ui/BottomSheet";
 import { TagInput } from "../../shared/ui/TagInput";
 import { useDebouncedValue } from "../../shared/hooks/useDebouncedValue";
-import { createPlace, geocode, listPlaces } from "./places.api";
+import { createPlace, geocode, listPlaces, updatePlace } from "./places.api";
 import { listFolders } from "../folders/folders.api";
 import { NominatimSearch } from "./NominatimSearch";
 import { OnboardingModal } from "../auth/OnboardingModal";
@@ -159,6 +159,7 @@ export function MapPage() {
 
   // draft
   const [draft, setDraft] = useState<null | {
+    placeId?: string; // 편집 모드일 때만 존재
     title: string;
     memo: string;
     visited_at: string;
@@ -262,6 +263,17 @@ export function MapPage() {
     },
   });
 
+  const updatePlaceMut = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: Parameters<typeof updatePlace>[1] }) =>
+      updatePlace(id, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["places"] });
+      setSheetOpen(false);
+      setSelected(null);
+      setDraft(null);
+    },
+  });
+
   const allPlaces = placesQuery.data ?? [];
   const folders = foldersQuery.data ?? [];
 
@@ -271,6 +283,30 @@ export function MapPage() {
     : selectedFolderId === "none"
     ? allPlaces.filter((p) => !p.folder_id)
     : allPlaces.filter((p) => p.folder_id === selectedFolderId);
+
+  // 마커 클릭 시 편집 모드로 전환하는 함수
+  const openEditSheet = useCallback((place: Place) => {
+    setSelected(null);
+    setSheetOpen(true);
+
+    if (Number.isFinite(place.lat) && Number.isFinite(place.lng)) {
+      mapRef.current?.flyTo({ center: [place.lng, place.lat], zoom: 14, essential: true });
+    }
+
+    setDraft({
+      placeId: place.id,
+      title: place.title,
+      memo: place.memo ?? "",
+      visited_at: place.visited_at ?? "",
+      tags: place.tags,
+      folder_id: place.folder_id,
+      marker_style: place.marker_style || "circle",
+      lat: place.lat,
+      lng: place.lng,
+      source: place.source ?? "manual",
+      source_id: place.source_id ?? null,
+    });
+  }, []);
 
   // 마커 동기화 (폴더 색상 적용)
   useEffect(() => {
@@ -305,6 +341,10 @@ export function MapPage() {
           if (parent) {
             // Remove old element and create new one
             const newEl = createMarkerElement(markerStyle, folderColor);
+            // 마커 클릭 시 편집 모드로 전환
+            newEl.addEventListener("click", () => {
+              openEditSheet(p);
+            });
             parent.replaceChild(newEl, el);
             // Note: MapLibre Marker doesn't have setElement, so we replace the element directly
           }
@@ -320,17 +360,35 @@ export function MapPage() {
         `<div style="font-size:12px;line-height:1.35;max-width:220px">
           <div style="font-weight:700;margin-bottom:4px">${escapeHtml(p.title)}</div>
           <div style="opacity:.85">${escapeHtml(clampText(p.memo ?? ""))}</div>
+          <button id="edit-place-${p.id}" style="margin-top:8px;padding:4px 8px;background:#000;color:#fff;border:none;border-radius:4px;font-size:11px;cursor:pointer;">✏️ 편집</button>
         </div>`
       );
+
+      // Popup이 열릴 때 편집 버튼에 이벤트 추가
+      popup.on("open", () => {
+        const editBtn = document.getElementById(`edit-place-${p.id}`);
+        if (editBtn) {
+          editBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            popup.remove();
+            openEditSheet(p);
+          });
+        }
+      });
 
       const marker = new maplibregl.Marker({ element: el })
         .setLngLat([p.lng, p.lat])
         .setPopup(popup)
         .addTo(map);
 
+      // 마커 클릭 시 편집 모드로 전환
+      el.addEventListener("click", () => {
+        openEditSheet(p);
+      });
+
       existing.set(p.id, marker);
     }
-  }, [places, folders]);
+  }, [places, folders, openEditSheet]);
 
   // 검색 실행 (디바운스 + 자동 재시도)
   useEffect(() => {
@@ -442,26 +500,43 @@ export function MapPage() {
     !!draft?.title?.trim() &&
     draft?.lat != null &&
     draft?.lng != null &&
-    !createPlaceMut.isPending;
+    !createPlaceMut.isPending &&
+    !updatePlaceMut.isPending;
 
   const onSave = async () => {
     if (!draft) return;
     if (!canSave) return;
 
     try {
-      await createPlaceMut.mutateAsync({
-        folder_id: draft.folder_id,
-        title: draft.title.trim(),
-        memo: draft.memo.trim() ? draft.memo.trim() : null,
-        lat: draft.lat!,
-        lng: draft.lng!,
-        visited_at: draft.visited_at ? draft.visited_at : null,
-        tags: draft.tags,
-        source: draft.source,
-        source_id: draft.source_id,
-        marker_style: draft.marker_style,
-        created_at: nowISO(),
-      });
+      // 편집 모드 (placeId가 있으면)
+      if (draft.placeId) {
+        await updatePlaceMut.mutateAsync({
+          id: draft.placeId,
+          payload: {
+            folder_id: draft.folder_id,
+            title: draft.title.trim(),
+            memo: draft.memo.trim() ? draft.memo.trim() : null,
+            visited_at: draft.visited_at ? draft.visited_at : null,
+            tags: draft.tags,
+            marker_style: draft.marker_style,
+          },
+        });
+      } else {
+        // 새로 생성
+        await createPlaceMut.mutateAsync({
+          folder_id: draft.folder_id,
+          title: draft.title.trim(),
+          memo: draft.memo.trim() ? draft.memo.trim() : null,
+          lat: draft.lat!,
+          lng: draft.lng!,
+          visited_at: draft.visited_at ? draft.visited_at : null,
+          tags: draft.tags,
+          source: draft.source,
+          source_id: draft.source_id,
+          marker_style: draft.marker_style,
+          created_at: nowISO(),
+        });
+      }
     } catch (e: any) {
       const msg = (e?.message as string) || "저장 실패";
       if (/unique|constraint|duplicate/i.test(msg)) {
@@ -588,8 +663,9 @@ export function MapPage() {
         onClose={() => {
           setSheetOpen(false);
           setSelected(null);
+          setDraft(null);
         }}
-        title="🧷 저장 카드"
+        title={draft?.placeId ? "✏️ 편집 카드" : "🧷 저장 카드"}
       >
         {!draft ? (
           <div className="text-sm opacity-70">선택된 장소가 없어요.</div>
@@ -715,7 +791,11 @@ export function MapPage() {
                 disabled={!canSave}
                 type="button"
               >
-                {createPlaceMut.isPending ? "저장 중…" : "저장하기"}
+                {createPlaceMut.isPending || updatePlaceMut.isPending
+                  ? "저장 중…"
+                  : draft?.placeId
+                  ? "수정하기"
+                  : "저장하기"}
               </button>
 
               <button
