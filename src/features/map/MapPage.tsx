@@ -309,12 +309,13 @@ export function MapPage() {
   }, []);
 
   // 마커 동기화 (폴더 색상 적용)
+  // 모든 장소의 마커를 표시 (필터링은 시각적으로만 처리)
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
     const existing = markersRef.current;
-    const nextIds = new Set(places.map((p) => p.id));
+    const nextIds = new Set(allPlaces.map((p) => p.id));
 
     // 폴더 색상 맵 생성
     const folderColorMap = new Map<string, string>();
@@ -329,7 +330,14 @@ export function MapPage() {
       }
     }
 
-    for (const p of places) {
+    // 모든 장소의 마커를 생성/업데이트
+    for (const p of allPlaces) {
+      // 필터링된 장소인지 확인 (시각적 강조용)
+      const isFiltered = selectedFolderId === null
+        ? true
+        : selectedFolderId === "none"
+        ? !p.folder_id
+        : p.folder_id === selectedFolderId;
       if (existing.has(p.id)) {
         // Update existing marker if folder or style changed
         const existingMarker = existing.get(p.id);
@@ -348,6 +356,16 @@ export function MapPage() {
           if (parent) {
             // Remove old element and create new one
             const newEl = createMarkerElement(markerStyle, folderColor);
+            
+            // 필터링되지 않은 마커는 투명도 적용
+            if (!isFiltered) {
+              newEl.style.opacity = "0.3";
+              newEl.style.pointerEvents = "none";
+            } else {
+              newEl.style.opacity = "1";
+              newEl.style.pointerEvents = "auto";
+            }
+            
             // 마커 클릭 시 편집 모드로 전환
             newEl.addEventListener("click", () => {
               openEditSheet(p);
@@ -362,6 +380,15 @@ export function MapPage() {
       const folderColor = p.folder_id ? (folderColorMap.get(p.folder_id) ?? null) : null;
       const markerStyle: MarkerStyle = (p.marker_style || "circle") as MarkerStyle;
       const el = createMarkerElement(markerStyle, folderColor);
+      
+      // 필터링되지 않은 마커는 투명도 적용
+      if (!isFiltered) {
+        el.style.opacity = "0.3";
+        el.style.pointerEvents = "none";
+      } else {
+        el.style.opacity = "1";
+        el.style.pointerEvents = "auto";
+      }
 
       const popup = new maplibregl.Popup({ offset: 18 }).setHTML(
         `<div style="font-size:12px;line-height:1.35;max-width:220px">
@@ -395,7 +422,7 @@ export function MapPage() {
 
       existing.set(p.id, marker);
     }
-  }, [places, folders, openEditSheet]);
+  }, [allPlaces, folders, openEditSheet, selectedFolderId]);
 
   // 검색 실행 (디바운스 + 자동 재시도)
   useEffect(() => {
