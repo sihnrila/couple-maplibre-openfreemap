@@ -86,8 +86,9 @@ async function handleGeocode(req: Request) {
 
   const res = await fetch(target.toString(), {
     headers: {
-      "user-agent": "CoupleMap/0.2 (contact: example@example.com)",
+      "user-agent": "CoupleMap/1.0 (contact: sihnrila@github.com)",
       "accept-language": "ko",
+      "referer": "https://couplemap-api.oo8923.workers.dev",
     },
   });
 

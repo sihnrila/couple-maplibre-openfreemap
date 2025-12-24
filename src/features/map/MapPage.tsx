@@ -137,6 +137,15 @@ export function MapPage() {
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
+    
+    // 스타일이 로드되지 않았으면 대기
+    if (!map.isStyleLoaded()) {
+      map.once("load", () => {
+        map.setStyle(BASE_STYLES[baseStyle]);
+      });
+      return;
+    }
+    
     map.setStyle(BASE_STYLES[baseStyle]);
   }, [baseStyle]);
 
@@ -262,13 +271,14 @@ export function MapPage() {
         }
       } catch (e: any) {
         if (!cancelled) {
-          console.error("Geocode error:", e);
-          setResults([]);
           const errorMsg = e?.message || "검색 중 오류가 발생했습니다";
-          if (errorMsg.includes("너무 빠릅니다")) {
+          console.error("Geocode error:", errorMsg, e);
+          setResults([]);
+          
+          if (errorMsg.includes("너무 빠릅니다") || errorMsg.includes("429")) {
             setSearchError("검색 요청이 너무 빠릅니다. 1초 후 다시 시도해주세요.");
-          } else if (errorMsg.includes("429")) {
-            setSearchError("검색 요청이 너무 빠릅니다. 잠시 후 다시 시도해주세요.");
+          } else if (errorMsg.includes("연결할 수 없습니다") || errorMsg.includes("NetworkError")) {
+            setSearchError("서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.");
           } else {
             setSearchError(errorMsg);
           }
