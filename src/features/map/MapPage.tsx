@@ -298,22 +298,22 @@ export function MapPage() {
         // Update existing marker if folder or style changed
         const existingMarker = existing.get(p.id);
         if (existingMarker) {
-          const folderColor = p.folder_id ? folderColorMap.get(p.folder_id) : null;
-          const markerStyle = p.marker_style || "circle";
+          const folderColor = p.folder_id ? (folderColorMap.get(p.folder_id) ?? null) : null;
+          const markerStyle: MarkerStyle = (p.marker_style || "circle") as MarkerStyle;
           const el = existingMarker.getElement();
           const parent = el?.parentElement;
           if (parent) {
             // Remove old element and create new one
             const newEl = createMarkerElement(markerStyle, folderColor);
             parent.replaceChild(newEl, el);
-            existingMarker.setElement(newEl);
+            // Note: MapLibre Marker doesn't have setElement, so we replace the element directly
           }
         }
         continue;
       }
 
-      const folderColor = p.folder_id ? folderColorMap.get(p.folder_id) : null;
-      const markerStyle = p.marker_style || "circle";
+      const folderColor = p.folder_id ? (folderColorMap.get(p.folder_id) ?? null) : null;
+      const markerStyle: MarkerStyle = (p.marker_style || "circle") as MarkerStyle;
       const el = createMarkerElement(markerStyle, folderColor);
 
       const popup = new maplibregl.Popup({ offset: 18 }).setHTML(
