@@ -342,11 +342,8 @@ export function MapPage() {
         // Update existing marker if folder or style changed
         const existingMarker = existing.get(p.id);
         if (existingMarker) {
-          // 위치가 변경되었는지 확인하고 업데이트
-          const currentLngLat = existingMarker.getLngLat();
-          if (Math.abs(currentLngLat.lng - p.lng) > 0.0001 || Math.abs(currentLngLat.lat - p.lat) > 0.0001) {
-            existingMarker.setLngLat([p.lng, p.lat]);
-          }
+          // 위치를 항상 명시적으로 설정 (고정)
+          existingMarker.setLngLat([p.lng, p.lat]);
           
           // 폴더나 스타일이 변경된 경우에만 element 교체
           const folderColor = p.folder_id ? (folderColorMap.get(p.folder_id) ?? null) : null;
@@ -371,7 +368,18 @@ export function MapPage() {
               openEditSheet(p);
             });
             parent.replaceChild(newEl, el);
-            // Note: MapLibre Marker doesn't have setElement, so we replace the element directly
+            
+            // Element 교체 후 위치를 다시 명시적으로 설정 (고정)
+            existingMarker.setLngLat([p.lng, p.lat]);
+          } else {
+            // Element 교체가 없어도 필터링 상태에 따라 투명도 업데이트
+            if (!isFiltered) {
+              el.style.opacity = "0.3";
+              el.style.pointerEvents = "none";
+            } else {
+              el.style.opacity = "1";
+              el.style.pointerEvents = "auto";
+            }
           }
         }
         continue;
