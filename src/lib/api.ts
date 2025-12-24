@@ -31,7 +31,7 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`${API_BASE}${path}`, {
-      ...init,
+    ...init,
       headers,
     });
   } catch (e: any) {
@@ -66,7 +66,7 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   }
   
   try {
-    return (await res.json()) as T;
+  return (await res.json()) as T;
   } catch (e: any) {
     throw new Error("서버 응답을 파싱할 수 없습니다");
   }

@@ -61,12 +61,4 @@
   width: calc(100% - var(--maplibre-ctrl-width) - var(--maplibre-ctrl-margin) - 12px - 12px) !important;
   /* 100% - 컨트롤 너비 - 컨트롤 margin - left(12px) - right 여유(12px) */
   max-width: calc(100% - 84px) !important;
-  z-index: 30 !important;
-  position: relative;
-}
-
-/* 상단 버튼들이 확실히 보이도록 */
-.map-search-container > div {
-  position: relative;
-  z-index: 31;
 }
