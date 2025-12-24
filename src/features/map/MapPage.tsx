@@ -239,6 +239,17 @@ export function MapPage() {
             });
             return;
           }
+          
+          // selected에 주소 정보 저장
+          setSelected({
+            place_id: result.place_id || "",
+            lat: String(lat),
+            lon: String(lng),
+            display_name: result.display_name || "",
+            name: result.name,
+            type: result.type,
+            class: result.class,
+          });
 
           // 주소 정보로 저장 카드 열기
           const geocodeItem: GeocodeItem = {
@@ -260,7 +271,7 @@ export function MapPage() {
 
           setDraft({
             title: result.name || result.display_name?.split(",")[0] || "새 장소",
-            memo: result.display_name ? `📍 ${result.display_name}` : "",
+            memo: "", // 주소는 별도 필드로 표시하므로 메모는 비워둠
             visited_at: "",
             tags: [],
             folder_id: null,
@@ -269,6 +280,17 @@ export function MapPage() {
             lng,
             source: "reverse_geocode",
             source_id: String(result.place_id || ""),
+          });
+          
+          // selected에 주소 정보 저장
+          setSelected({
+            place_id: result.place_id || "",
+            lat: String(lat),
+            lon: String(lng),
+            display_name: result.display_name || "",
+            name: result.name,
+            type: result.type,
+            class: result.class,
           });
         }).catch((err) => {
           console.error("Reverse geocode error:", err);
@@ -419,6 +441,7 @@ export function MapPage() {
 
   // 마커 클릭 시 편집 모드로 전환하는 함수
   const openEditSheet = useCallback((place: Place) => {
+    // 편집 모드에서는 selected를 null로 설정 (주소는 draft에서 관리)
     setSelected(null);
     setSheetOpen(true);
 
@@ -510,13 +533,19 @@ export function MapPage() {
         el.style.pointerEvents = "auto";
       }
 
-      const popup = new maplibregl.Popup({ offset: 18 }).setHTML(
-        `<div style="font-size:12px;line-height:1.35;max-width:220px">
-          <div style="font-weight:700;margin-bottom:4px">${escapeHtml(p.title)}</div>
-          <div style="opacity:.85">${escapeHtml(clampText(p.memo ?? ""))}</div>
-          <button id="edit-place-${p.id}" style="margin-top:8px;padding:4px 8px;background:#000;color:#fff;border:none;border-radius:4px;font-size:11px;cursor:pointer;">✏️ 편집</button>
-        </div>`
-      );
+      // Popup에 메모 표시 (수정된 텍스트)
+      const popupContent = p.memo && p.memo.trim() 
+        ? `<div style="font-size:12px;line-height:1.35;max-width:220px">
+            <div style="font-weight:700;margin-bottom:4px">${escapeHtml(p.title)}</div>
+            <div style="opacity:.85;margin-bottom:8px">${escapeHtml(clampText(p.memo))}</div>
+            <button id="edit-place-${p.id}" style="padding:4px 8px;background:#000;color:#fff;border:none;border-radius:4px;font-size:11px;cursor:pointer;">✏️ 편집</button>
+          </div>`
+        : `<div style="font-size:12px;line-height:1.35;max-width:220px">
+            <div style="font-weight:700;margin-bottom:4px">${escapeHtml(p.title)}</div>
+            <button id="edit-place-${p.id}" style="margin-top:8px;padding:4px 8px;background:#000;color:#fff;border:none;border-radius:4px;font-size:11px;cursor:pointer;">✏️ 편집</button>
+          </div>`;
+      
+      const popup = new maplibregl.Popup({ offset: 18 }).setHTML(popupContent);
 
       // Popup이 열릴 때 편집 버튼에 이벤트 추가
       popup.on("open", () => {
@@ -642,7 +671,7 @@ export function MapPage() {
 
     setDraft({
       title: pickTitleFromGeocode(item),
-      memo: item.display_name ? `📍 ${item.display_name}` : "",
+      memo: "", // 주소는 별도 필드로 표시하므로 메모는 비워둠
       visited_at: "",
       tags: [],
       folder_id: null,
@@ -834,23 +863,30 @@ export function MapPage() {
           <div className="text-sm opacity-70">선택된 장소가 없어요.</div>
         ) : (
           <div className="space-y-4">
-            {draft.placeId ? (
-              <div className="text-[11px] opacity-70">
-                편집 중: {draft.title}
+            {/* 주소 필드 (고정, 읽기 전용) */}
+            <div className="space-y-2 pb-3 border-b border-black/10">
+              <label className="text-xs font-semibold text-black/70">📍 주소</label>
+              <div className="text-sm text-black/80 bg-black/5 px-3 py-2 rounded-xl">
+                {draft.placeId 
+                  ? (() => {
+                      // 편집 모드: 기존 장소의 주소 정보 표시
+                      const place = allPlaces.find(p => p.id === draft.placeId);
+                      // source_id가 있으면 reverse geocoding으로 주소를 가져올 수 있지만,
+                      // 간단하게 memo에서 주소를 추출하거나 "주소 정보가 없어요" 표시
+                      if (place?.memo && place.memo.includes("📍")) {
+                        return place.memo.replace("📍 ", "");
+                      }
+                      // source가 reverse_geocode나 nominatim이면 주소 정보가 있을 수 있음
+                      return "주소 정보가 없어요";
+                    })()
+                  : (selected?.display_name || "주소 정보가 없어요")
+                }
               </div>
-            ) : (
-              <div className="text-[11px] opacity-70">
-                {selected?.display_name ? (
-                  <span>{selected.display_name}</span>
-                ) : (
-                  <span>주소 정보가 없어요</span>
-                )}
-              </div>
-            )}
+            </div>
 
-            {/* 폴더 선택 */}
+            {/* 폴더 선택 (고정) */}
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-black/70">폴더</label>
+              <label className="text-xs font-semibold text-black/70">📁 폴더</label>
               <div className="flex flex-wrap gap-2">
                 <button
                   className={`px-3 py-2 rounded-xl text-xs font-semibold ${
@@ -879,7 +915,7 @@ export function MapPage() {
               </div>
             </div>
 
-            {/* 마커 스타일 선택 */}
+            {/* 마커 스타일 선택 (고정) */}
             <div className="space-y-2">
               <label className="text-xs font-semibold text-black/70">마커 모양</label>
               <div className="grid grid-cols-3 gap-2">
@@ -949,7 +985,7 @@ export function MapPage() {
                 className="w-full px-3 py-2 rounded-xl bg-black/5 outline-none focus:ring-2 focus:ring-black/15 text-sm min-h-[90px] text-black placeholder:text-black/50"
                 value={draft.memo}
                 onChange={(e) => setDraft({ ...draft, memo: e.target.value })}
-                placeholder="예: 창가 자리, 6시쯤 노을 예쁨…"
+                placeholder="메모를 입력해주세요"
               />
             </div>
 
