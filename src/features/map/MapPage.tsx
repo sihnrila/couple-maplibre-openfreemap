@@ -197,13 +197,13 @@ export function MapPage() {
       zoom: 11,
     });
 
-    map.addControl(new maplibregl.NavigationControl(), "top-right");
+    map.addControl(new maplibregl.NavigationControl(), "bottom-right");
     map.addControl(
       new maplibregl.GeolocateControl({
         positionOptions: { enableHighAccuracy: true },
         trackUserLocation: false,
       }),
-      "top-right"
+      "bottom-right"
     );
 
     mapRef.current = map;
@@ -535,9 +535,9 @@ export function MapPage() {
           onPick={openSaveSheet}
         />
 
-        <div className="flex gap-2 relative z-30">
+        <div className="flex gap-2">
           <button
-            className="px-3 py-2 rounded-2xl bg-white/85 backdrop-blur shadow text-sm text-black relative z-30"
+            className="px-3 py-2 rounded-2xl bg-white/85 backdrop-blur shadow text-sm text-black"
             onClick={() => setFoldersListOpen(true)}
             type="button"
             title="폴더 목록"
@@ -546,7 +546,7 @@ export function MapPage() {
           </button>
 
           <button
-            className="px-3 py-2 rounded-2xl bg-white/85 backdrop-blur shadow text-sm text-black relative z-30"
+            className="px-3 py-2 rounded-2xl bg-white/85 backdrop-blur shadow text-sm text-black"
             onClick={() => setSettingsOpen(true)}
             type="button"
             title="설정"
@@ -555,7 +555,7 @@ export function MapPage() {
           </button>
 
           <button
-            className="px-3 py-2 rounded-2xl bg-white/85 backdrop-blur shadow text-sm text-black relative z-30"
+            className="px-3 py-2 rounded-2xl bg-white/85 backdrop-blur shadow text-sm text-black"
             type="button"
             onClick={() => {
               const map = mapRef.current;
