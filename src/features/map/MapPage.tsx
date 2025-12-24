@@ -252,7 +252,7 @@ export function MapPage() {
   useEffect(() => {
     let cancelled = false;
     let retryCount = 0;
-    const maxRetries = 1; // rate limit 에러 시 1회 재시도
+    const maxRetries = 2; // rate limit 에러 시 최대 2회 재시도
 
     const run = async (isRetry = false) => {
       const query = debouncedQ.trim();
@@ -266,6 +266,9 @@ export function MapPage() {
       if (!isRetry) {
         setSearching(true);
         setSearchError(null);
+      } else {
+        // 재시도 중임을 표시
+        setSearchError("재시도 중...");
       }
       
       try {
@@ -273,6 +276,7 @@ export function MapPage() {
         if (!cancelled) {
           setResults(data || []);
           retryCount = 0;
+          setSearchError(null);
           if (data && data.length === 0) {
             setSearchError("검색 결과가 없습니다");
           }
@@ -282,21 +286,21 @@ export function MapPage() {
           const errorMsg = e?.message || "검색 중 오류가 발생했습니다";
           
           // Rate limit 에러 시 자동 재시도
-          if ((errorMsg.includes("너무 빠릅니다") || errorMsg.includes("429")) && retryCount < maxRetries) {
+          if ((errorMsg.includes("너무 빠릅니다") || errorMsg.includes("429") || errorMsg.includes("Rate limited")) && retryCount < maxRetries) {
             retryCount++;
-            // 1.2초 후 재시도
+            // 1.5초 후 재시도 (Worker rate limit 1.2초보다 여유있게)
             setTimeout(() => {
               if (!cancelled) {
                 void run(true);
               }
-            }, 1200);
+            }, 1500);
             return;
           }
           
           console.error("Geocode error:", errorMsg, e);
           setResults([]);
           
-          if (errorMsg.includes("너무 빠릅니다") || errorMsg.includes("429")) {
+          if (errorMsg.includes("너무 빠릅니다") || errorMsg.includes("429") || errorMsg.includes("Rate limited")) {
             setSearchError("검색 요청이 너무 빠릅니다. 잠시 후 다시 시도해주세요.");
           } else if (errorMsg.includes("연결할 수 없습니다") || errorMsg.includes("NetworkError")) {
             setSearchError("서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.");

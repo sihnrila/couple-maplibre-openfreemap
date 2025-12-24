@@ -73,7 +73,8 @@ async function handleGeocode(req: Request) {
   if (q.length < 2) return json([]);
 
   const now = Date.now();
-  if (now - lastGeocodeAt < 950) {
+  // Rate limit: 1.2초 간격 (더 여유있게)
+  if (now - lastGeocodeAt < 1200) {
     return bad("Rate limited: try again in a second.", 429);
   }
   lastGeocodeAt = now;
