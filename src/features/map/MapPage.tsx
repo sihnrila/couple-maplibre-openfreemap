@@ -67,7 +67,7 @@ export function MapPage() {
 
   // 검색 state
   const [q, setQ] = useState("");
-  const debouncedQ = useDebouncedValue(q, 450);
+  const debouncedQ = useDebouncedValue(q, 600); // 450ms → 600ms로 증가 (rate limit 여유 확보)
   const [results, setResults] = useState<GeocodeItem[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -248,23 +248,31 @@ export function MapPage() {
     }
   }, [places, folders]);
 
-  // 검색 실행 (디바운스)
+  // 검색 실행 (디바운스 + 자동 재시도)
   useEffect(() => {
     let cancelled = false;
+    let retryCount = 0;
+    const maxRetries = 1; // rate limit 에러 시 1회 재시도
 
-    const run = async () => {
+    const run = async (isRetry = false) => {
       const query = debouncedQ.trim();
       if (query.length < 2) {
         setResults([]);
         setSearchError(null);
+        retryCount = 0;
         return;
       }
-      setSearching(true);
-      setSearchError(null);
+      
+      if (!isRetry) {
+        setSearching(true);
+        setSearchError(null);
+      }
+      
       try {
         const data = await geocode(query, 6);
         if (!cancelled) {
           setResults(data || []);
+          retryCount = 0;
           if (data && data.length === 0) {
             setSearchError("검색 결과가 없습니다");
           }
@@ -272,19 +280,35 @@ export function MapPage() {
       } catch (e: any) {
         if (!cancelled) {
           const errorMsg = e?.message || "검색 중 오류가 발생했습니다";
+          
+          // Rate limit 에러 시 자동 재시도
+          if ((errorMsg.includes("너무 빠릅니다") || errorMsg.includes("429")) && retryCount < maxRetries) {
+            retryCount++;
+            // 1.2초 후 재시도
+            setTimeout(() => {
+              if (!cancelled) {
+                void run(true);
+              }
+            }, 1200);
+            return;
+          }
+          
           console.error("Geocode error:", errorMsg, e);
           setResults([]);
           
           if (errorMsg.includes("너무 빠릅니다") || errorMsg.includes("429")) {
-            setSearchError("검색 요청이 너무 빠릅니다. 1초 후 다시 시도해주세요.");
+            setSearchError("검색 요청이 너무 빠릅니다. 잠시 후 다시 시도해주세요.");
           } else if (errorMsg.includes("연결할 수 없습니다") || errorMsg.includes("NetworkError")) {
             setSearchError("서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.");
           } else {
             setSearchError(errorMsg);
           }
+          retryCount = 0;
         }
       } finally {
-        if (!cancelled) setSearching(false);
+        if (!isRetry && !cancelled) {
+          setSearching(false);
+        }
       }
     };
 
@@ -292,6 +316,7 @@ export function MapPage() {
 
     return () => {
       cancelled = true;
+      retryCount = 0;
     };
   }, [debouncedQ]);
 
