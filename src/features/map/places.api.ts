@@ -17,6 +17,7 @@ export async function updatePlace(
     memo?: string | null;
     visited_at?: string | null;
     tags?: string[];
+    marker_style?: string;
   }
 ): Promise<{ id: string }> {
   return api<{ id: string }>(`/api/places/${id}`, {

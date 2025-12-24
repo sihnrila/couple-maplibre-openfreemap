@@ -302,7 +302,7 @@ async function handlePlacesList(req: Request, env: Env) {
   if (!coupleId) return unauthorized();
 
   const stmt = env.DB.prepare(
-    "SELECT id, couple_id, folder_id, title, memo, lat, lng, visited_at, tags_json, source, source_id, created_at FROM places WHERE couple_id = ? ORDER BY created_at DESC"
+    "SELECT id, couple_id, folder_id, title, memo, lat, lng, visited_at, tags_json, source, source_id, marker_style, created_at FROM places WHERE couple_id = ? ORDER BY created_at DESC"
   ).bind(coupleId);
 
   const { results } = await stmt.all();
@@ -319,6 +319,7 @@ async function handlePlacesList(req: Request, env: Env) {
     tags: safeJsonArray(r.tags_json),
     source: r.source ?? null,
     source_id: r.source_id ?? null,
+    marker_style: r.marker_style ?? "circle",
     created_at: r.created_at,
   }));
 
@@ -351,10 +352,15 @@ async function handlePlacesCreate(req: Request, env: Env) {
   const tags = Array.isArray(body.tags) ? body.tags.filter((t: any) => typeof t === "string") : [];
   const source = body.source != null ? String(body.source) : null;
   const source_id = body.source_id != null ? String(body.source_id) : null;
+  const marker_style = body.marker_style ? String(body.marker_style) : "circle";
   const created_at = body.created_at ? String(body.created_at) : new Date().toISOString();
 
   if (!title) return bad("Missing title");
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return bad("Invalid lat/lng");
+  
+  // Validate marker_style
+  const validStyles = ["circle", "pin", "heart", "star", "diamond", "square"];
+  if (!validStyles.includes(marker_style)) return bad("Invalid marker_style");
 
   // Verify folder belongs to couple if provided
   if (folder_id) {
@@ -368,7 +374,7 @@ async function handlePlacesCreate(req: Request, env: Env) {
 
   try {
     await env.DB.prepare(
-      "INSERT INTO places (id, couple_id, folder_id, title, memo, lat, lng, visited_at, tags_json, source, source_id, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
+      "INSERT INTO places (id, couple_id, folder_id, title, memo, lat, lng, visited_at, tags_json, source, source_id, marker_style, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)"
     ).bind(
       id,
       coupleId,
@@ -381,6 +387,7 @@ async function handlePlacesCreate(req: Request, env: Env) {
       JSON.stringify(tags),
       source,
       source_id,
+      marker_style,
       created_at
     ).run();
   } catch (e: any) {
@@ -399,6 +406,7 @@ async function handlePlacesCreate(req: Request, env: Env) {
     tags,
     source,
     source_id,
+    marker_style,
     created_at,
   });
 }
@@ -451,6 +459,13 @@ async function handlePlacesUpdate(req: Request, env: Env, placeId: string) {
     const tags = Array.isArray(body.tags) ? body.tags.filter((t: any) => typeof t === "string") : [];
     updates.push("tags_json = ?");
     values.push(JSON.stringify(tags));
+  }
+  if (body.marker_style !== undefined) {
+    const marker_style = String(body.marker_style);
+    const validStyles = ["circle", "pin", "heart", "star", "diamond", "square"];
+    if (!validStyles.includes(marker_style)) return bad("Invalid marker_style");
+    updates.push("marker_style = ?");
+    values.push(marker_style);
   }
 
   if (updates.length === 0) return json({ id: placeId });

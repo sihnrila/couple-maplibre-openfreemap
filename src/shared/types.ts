@@ -1,3 +1,5 @@
+export type MarkerStyle = "circle" | "pin" | "heart" | "star" | "diamond" | "square";
+
 export type Place = {
   id: string;
   couple_id: string;
@@ -10,6 +12,7 @@ export type Place = {
   tags: string[];
   source: string | null;
   source_id: string | null;
+  marker_style: MarkerStyle;
   created_at: string;
 };
 

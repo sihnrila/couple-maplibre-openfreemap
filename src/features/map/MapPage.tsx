@@ -3,7 +3,7 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import type { Place, GeocodeItem, Folder } from "../../shared/types";
+import type { Place, GeocodeItem, Folder, MarkerStyle } from "../../shared/types";
 import { BottomSheet } from "../../shared/ui/BottomSheet";
 import { TagInput } from "../../shared/ui/TagInput";
 import { useDebouncedValue } from "../../shared/hooks/useDebouncedValue";
@@ -25,6 +25,84 @@ const ICON_EMOJI_MAP: Record<string, string> = {
   walk: "🚶",
   gift: "🎁",
 };
+
+const MARKER_STYLE_OPTIONS: { value: MarkerStyle; label: string; emoji: string }[] = [
+  { value: "circle", label: "원형", emoji: "⭕" },
+  { value: "pin", label: "핀", emoji: "📍" },
+  { value: "heart", label: "하트", emoji: "❤️" },
+  { value: "star", label: "별", emoji: "⭐" },
+  { value: "diamond", label: "다이아", emoji: "💎" },
+  { value: "square", label: "사각형", emoji: "⬜" },
+];
+
+function createMarkerElement(style: MarkerStyle, color: string | null): HTMLDivElement {
+  const el = document.createElement("div");
+  el.className = "cursor-pointer flex items-center justify-center";
+  el.style.transition = "transform 0.2s";
+  
+  const bgColor = color || "#ffffff";
+  const shadowColor = color ? `${color}40` : "rgba(0,0,0,0.25)";
+  
+  switch (style) {
+    case "circle":
+      el.className += " w-3 h-3 rounded-full";
+      el.style.backgroundColor = bgColor;
+      el.style.boxShadow = `0 0 0 3px ${shadowColor}`;
+      break;
+    case "pin":
+      el.className += " w-0 h-0";
+      el.style.borderLeft = "6px solid transparent";
+      el.style.borderRight = "6px solid transparent";
+      el.style.borderTop = "12px solid";
+      el.style.borderTopColor = bgColor;
+      el.style.filter = `drop-shadow(0 2px 4px ${shadowColor})`;
+      break;
+    case "heart":
+      el.className += " w-4 h-4 text-lg leading-none";
+      el.innerHTML = "❤️";
+      el.style.filter = `drop-shadow(0 0 2px ${shadowColor})`;
+      el.style.transform = "scale(0.8)";
+      break;
+    case "star":
+      el.className += " w-4 h-4 text-lg leading-none";
+      el.innerHTML = "⭐";
+      el.style.filter = `drop-shadow(0 0 2px ${shadowColor})`;
+      el.style.transform = "scale(0.8)";
+      break;
+    case "diamond":
+      el.className += " w-3 h-3";
+      el.style.backgroundColor = bgColor;
+      el.style.transform = "rotate(45deg)";
+      el.style.boxShadow = `0 0 0 3px ${shadowColor}`;
+      break;
+    case "square":
+      el.className += " w-3 h-3";
+      el.style.backgroundColor = bgColor;
+      el.style.boxShadow = `0 0 0 3px ${shadowColor}`;
+      break;
+  }
+  
+  el.addEventListener("mouseenter", () => {
+    if (style === "heart" || style === "star") {
+      el.style.transform = "scale(1)";
+    } else if (style === "diamond") {
+      el.style.transform = "rotate(45deg) scale(1.1)";
+    } else {
+      el.style.transform = "scale(1.1)";
+    }
+  });
+  el.addEventListener("mouseleave", () => {
+    if (style === "heart" || style === "star") {
+      el.style.transform = "scale(0.8)";
+    } else if (style === "diamond") {
+      el.style.transform = "rotate(45deg) scale(1)";
+    } else {
+      el.style.transform = "scale(1)";
+    }
+  });
+  
+  return el;
+}
 
 function nowISO() {
   return new Date().toISOString();
@@ -83,6 +161,7 @@ export function MapPage() {
     visited_at: string;
     tags: string[];
     folder_id: string | null;
+    marker_style: MarkerStyle;
     lat: number | null;
     lng: number | null;
     source: string;
@@ -206,33 +285,26 @@ export function MapPage() {
 
     for (const p of places) {
       if (existing.has(p.id)) {
-        // Update existing marker color if folder changed
+        // Update existing marker if folder or style changed
         const existingMarker = existing.get(p.id);
         if (existingMarker) {
           const folderColor = p.folder_id ? folderColorMap.get(p.folder_id) : null;
+          const markerStyle = p.marker_style || "circle";
           const el = existingMarker.getElement();
-          if (el && folderColor) {
-            el.style.backgroundColor = folderColor;
-            el.style.boxShadow = `0 0 0 3px ${folderColor}40`;
-          } else if (el) {
-            el.style.backgroundColor = "#ffffff";
-            el.style.boxShadow = "0 0 0 3px rgba(0,0,0,0.25)";
+          const parent = el?.parentElement;
+          if (parent) {
+            // Remove old element and create new one
+            const newEl = createMarkerElement(markerStyle, folderColor);
+            parent.replaceChild(newEl, el);
+            existingMarker.setElement(newEl);
           }
         }
         continue;
       }
 
-      const el = document.createElement("div");
       const folderColor = p.folder_id ? folderColorMap.get(p.folder_id) : null;
-
-      if (folderColor) {
-        el.className = "w-3 h-3 rounded-full cursor-pointer";
-        el.style.backgroundColor = folderColor;
-        el.style.boxShadow = `0 0 0 3px ${folderColor}40`;
-      } else {
-        el.className =
-          "w-3 h-3 rounded-full bg-white shadow-[0_0_0_3px_rgba(0,0,0,0.25)] cursor-pointer";
-      }
+      const markerStyle = p.marker_style || "circle";
+      const el = createMarkerElement(markerStyle, folderColor);
 
       const popup = new maplibregl.Popup({ offset: 18 }).setHTML(
         `<div style="font-size:12px;line-height:1.35;max-width:220px">
@@ -343,6 +415,7 @@ export function MapPage() {
       visited_at: "",
       tags: [],
       folder_id: null,
+      marker_style: "circle",
       lat: Number.isFinite(lat) ? lat : null,
       lng: Number.isFinite(lng) ? lng : null,
       source: "nominatim",
@@ -376,6 +449,7 @@ export function MapPage() {
         tags: draft.tags,
         source: draft.source,
         source_id: draft.source_id,
+        marker_style: draft.marker_style,
         created_at: nowISO(),
       });
     } catch (e: any) {
@@ -493,6 +567,35 @@ export function MapPage() {
                     {f.icon ? ICON_EMOJI_MAP[f.icon] || "" : ""} {f.name}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* 마커 스타일 선택 */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-black/70">마커 모양</label>
+              <div className="grid grid-cols-3 gap-2">
+                {MARKER_STYLE_OPTIONS.map((option) => {
+                  const folderColor = draft.folder_id ? folders.find((f) => f.id === draft.folder_id)?.color : null;
+                  const isSelected = draft.marker_style === option.value;
+                  return (
+                    <button
+                      key={option.value}
+                      className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 ${
+                        isSelected
+                          ? folderColor
+                            ? "ring-2 ring-black/30 text-white"
+                            : "bg-black text-white"
+                          : "bg-black/5 hover:bg-black/10"
+                      }`}
+                      style={isSelected && folderColor ? { backgroundColor: folderColor } : undefined}
+                      onClick={() => setDraft({ ...draft, marker_style: option.value })}
+                      type="button"
+                    >
+                      <span>{option.emoji}</span>
+                      <span>{option.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

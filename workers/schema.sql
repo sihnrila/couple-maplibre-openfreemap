@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS places (
   tags_json TEXT NOT NULL DEFAULT '[]',
   source TEXT,
   source_id TEXT,
+  marker_style TEXT NOT NULL DEFAULT 'circle',
   created_at TEXT NOT NULL
 );
 
