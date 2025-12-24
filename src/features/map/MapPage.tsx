@@ -39,7 +39,8 @@ const MARKER_STYLE_OPTIONS: { value: MarkerStyle; label: string; emoji: string }
 function createMarkerElement(style: MarkerStyle, color: string | null): HTMLDivElement {
   const el = document.createElement("div");
   el.className = "cursor-pointer flex items-center justify-center";
-  el.style.transition = "transform 0.2s";
+  el.style.transition = "opacity 0.2s, filter 0.2s";
+  el.style.transformOrigin = "center center"; // transform의 기준점을 중심으로 설정
   
   const bgColor = color || "#ffffff";
   const shadowColor = color ? `${color}40` : "rgba(0,0,0,0.25)";
@@ -62,13 +63,11 @@ function createMarkerElement(style: MarkerStyle, color: string | null): HTMLDivE
       el.className += " w-4 h-4 text-lg leading-none";
       el.innerHTML = "❤️";
       el.style.filter = `drop-shadow(0 0 2px ${shadowColor})`;
-      el.style.transform = "scale(0.8)";
       break;
     case "star":
       el.className += " w-4 h-4 text-lg leading-none";
       el.innerHTML = "⭐";
       el.style.filter = `drop-shadow(0 0 2px ${shadowColor})`;
-      el.style.transform = "scale(0.8)";
       break;
     case "diamond":
       el.className += " w-3 h-3";
@@ -83,23 +82,21 @@ function createMarkerElement(style: MarkerStyle, color: string | null): HTMLDivE
       break;
   }
   
+  // Hover 효과: transform 대신 filter와 opacity 사용 (위치 변경 없음)
   el.addEventListener("mouseenter", () => {
-    if (style === "heart" || style === "star") {
-      el.style.transform = "scale(1)";
-    } else if (style === "diamond") {
-      el.style.transform = "rotate(45deg) scale(1.1)";
-    } else {
-      el.style.transform = "scale(1.1)";
-    }
+    el.style.filter = el.style.filter ? `${el.style.filter} brightness(1.2)` : "brightness(1.2)";
+    el.style.opacity = "0.9";
   });
   el.addEventListener("mouseleave", () => {
-    if (style === "heart" || style === "star") {
-      el.style.transform = "scale(0.8)";
-    } else if (style === "diamond") {
-      el.style.transform = "rotate(45deg) scale(1)";
+    // 원래 filter 복원
+    if (style === "pin" || style === "heart" || style === "star") {
+      el.style.filter = style === "pin" 
+        ? `drop-shadow(0 2px 4px ${shadowColor})`
+        : `drop-shadow(0 0 2px ${shadowColor})`;
     } else {
-      el.style.transform = "scale(1)";
+      el.style.filter = "";
     }
+    el.style.opacity = "";
   });
   
   return el;
