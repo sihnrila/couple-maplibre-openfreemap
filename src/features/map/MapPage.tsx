@@ -525,7 +525,7 @@ export function MapPage() {
   return (
     <div className="h-dvh w-full relative">
       {/* 상단: 검색 + 설정 */}
-      <div className="absolute z-20 left-3 right-16 top-3 space-y-2">
+      <div className="absolute z-2 left-3 top-3 space-y-2 map-search-container">
         <NominatimSearch
           value={q}
           onChange={setQ}

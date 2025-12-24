@@ -49,3 +49,16 @@
   left: auto !important;
   bottom: auto !important;
 }
+
+/* MapLibre 컨트롤 너비 변수 */
+:root {
+  --maplibre-ctrl-width: 60px; /* NavigationControl + GeolocateControl 대략 너비 */
+  --maplibre-ctrl-margin: 12px; /* 컨트롤의 right margin */
+}
+
+/* 상단 검색 영역: MapLibre 컨트롤 너비 제외한 고정 너비 */
+.map-search-container {
+  width: calc(100% - var(--maplibre-ctrl-width) - var(--maplibre-ctrl-margin) - 12px - 12px) !important;
+  /* 100% - 컨트롤 너비 - 컨트롤 margin - left(12px) - right 여유(12px) */
+  max-width: calc(100% - 84px) !important;
+}
