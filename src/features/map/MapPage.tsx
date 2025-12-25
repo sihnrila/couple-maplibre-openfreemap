@@ -573,10 +573,8 @@ export function MapPage() {
         marker.setLngLat([p.lng, p.lat]);
       });
 
-      // 마커 클릭 시 편집 모드로 전환
-      el.addEventListener("click", () => {
-        openEditSheet(p);
-      });
+      // 마커 클릭 시 팝업만 표시 (편집 창은 팝업의 편집 버튼으로만 열림)
+      // el.addEventListener("click", () => { openEditSheet(p); }); 제거
 
       existing.set(p.id, marker);
     }
