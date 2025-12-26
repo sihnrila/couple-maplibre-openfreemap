@@ -537,12 +537,12 @@ export function MapPage() {
       const popupContent = p.memo && p.memo.trim() 
         ? `<div style="font-size:12px;line-height:1.35;max-width:220px">
             <div style="font-weight:700;margin-bottom:4px">${escapeHtml(p.title)}</div>
-            <div style="opacity:.85;margin-bottom:8px">${escapeHtml(clampText(p.memo))}</div>
-            <button id="edit-place-${p.id}" style="padding:4px 8px;background:#000;color:#fff;border:none;border-radius:4px;font-size:11px;cursor:pointer;">✏️ 편집</button>
+            <div style="opacity:.85;margin-bottom:10px;font-size:11px">${escapeHtml(clampText(p.memo))}</div>
+            <button id="edit-place-${p.id}" style="width:100%;padding:6px 12px;background:#000;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background='#333'" onmouseout="this.style.background='#000'">✏️ 편집하기</button>
           </div>`
         : `<div style="font-size:12px;line-height:1.35;max-width:220px">
-            <div style="font-weight:700;margin-bottom:4px">${escapeHtml(p.title)}</div>
-            <button id="edit-place-${p.id}" style="margin-top:8px;padding:4px 8px;background:#000;color:#fff;border:none;border-radius:4px;font-size:11px;cursor:pointer;">✏️ 편집</button>
+            <div style="font-weight:700;margin-bottom:10px">${escapeHtml(p.title)}</div>
+            <button id="edit-place-${p.id}" style="width:100%;padding:6px 12px;background:#000;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background='#333'" onmouseout="this.style.background='#000'">✏️ 편집하기</button>
           </div>`;
       
       const popup = new maplibregl.Popup({ offset: 18 }).setHTML(popupContent);
